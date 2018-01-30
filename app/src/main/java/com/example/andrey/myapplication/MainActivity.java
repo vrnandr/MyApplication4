@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
     final String TAG = "myLogs";
     final String DIR_SD = "OSK";
     final String FILENAME_SD = "ServiceLog.log";
+    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,10 +47,12 @@ public class MainActivity extends AppCompatActivity {
         sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
         // формируем объект File, который содержит путь к файлу
         File sdFile = new File(sdPath, FILENAME_SD);
-        Log.d(TAG,"Файл "+sdPath+"/"+FILENAME_SD+" открыт");
+        Log.d(TAG,"Файл "+sdFile);
         try {
             // открываем поток для чтения
+            Log.d(TAG, "readFileSD: вход в try");
             BufferedReader br = new BufferedReader(new FileReader(sdFile));
+            Log.d(TAG, "readFileSD: создан bufferreader");
             // читаем содержимое
             int count = 0;
             Log.d(TAG, "readFileSD: "+String.valueOf(count));
@@ -57,8 +60,9 @@ public class MainActivity extends AppCompatActivity {
                 count++;
             }
             Log.d(TAG, String.valueOf(count));
+            Log.d(TAG, "readFileSD: конец");
         } catch (FileNotFoundException e) {
-            Log.d(TAG, "readFileSD: FileNotFoundException");
+            Log.d(TAG, "readFileSD: FileNotFoundException "+ e.getMessage());
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
