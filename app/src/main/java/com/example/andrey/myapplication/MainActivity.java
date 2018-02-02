@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
                String jsonString;
                while ((jsonString = br.readLine()) != null) {
                    Log.d(TAG, "jsonTest: " + jsonString);
-                   jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.indexOf(']')+1);
+                   jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                    JSONArray tasks = new JSONArray(new JSONTokener(jsonString));
                    for (int i = 0; i < tasks.length(); i++) {
                        JSONObject task = tasks.getJSONObject(i);
