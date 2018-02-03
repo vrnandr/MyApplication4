@@ -20,13 +20,16 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.HashSet;
+import java.util.Iterator;
 
 public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
     final String DIR_SD = "OSK";
-    final String FILENAME_SD = "someB.log";
+    final String FILENAME_SD = "part.log";
     TextView tv;
+    HashSet<Integer> tasksID;
     
 
     @Override
@@ -52,29 +55,40 @@ public class MainActivity extends AppCompatActivity {
            sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
            File sdFile = new File(sdPath, FILENAME_SD);
            ZNO zno = new ZNO();
+           tasksID = new HashSet<>();
            try {
                BufferedReader br = new BufferedReader(new FileReader(sdFile));
                String jsonString;
                while ((jsonString = br.readLine()) != null) {
-                   Log.d(TAG, "jsonTest: " + jsonString);
+                   /*Log.d(TAG, "jsonTest: " + jsonString);
+                   if ((jsonString.length()<44)&(jsonString.substring(23,43)!="Получен массив задач")) continue;
                    jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                    JSONArray tasks = new JSONArray(new JSONTokener(jsonString));
                    for (int i = 0; i < tasks.length(); i++) {
                        JSONObject task = tasks.getJSONObject(i);
-                       tv.append(task.getString(zno.SDTASKID));
-                       tv.append("\n");
-
-                   }
-
+                       tasksID.add(Integer.parseInt(task.getString(zno.SDTASKID)));
+                       //tv.append(task.getString(zno.SDTASKID));
+                       //tv.append("\n");
+                   }*/
+                   if (jsonString.length()>43&&jsonString.substring(22,42)=="Получен массив задач")
+                   Log.d(TAG, "jsonTest: " + jsonString.substring(22,42));
 
                }
-           } catch (JSONException e) {
-               Log.d(TAG, "jsonTest: " + e.getMessage());
+           } catch (StringIndexOutOfBoundsException e){
                e.printStackTrace();
+           //} //catch (JSONException e) {
+               //Log.d(TAG, "jsonTest: " + e.getMessage());
+              // e.printStackTrace();
            } catch (FileNotFoundException e) {
                e.printStackTrace();
            } catch (IOException e) {
                e.printStackTrace();
+           }
+            //TODO проверить при 0 кол-ве
+           Iterator<Integer> iterator = tasksID.iterator();
+           while (iterator.hasNext()){
+               tv.append(String.valueOf(iterator.next()));
+               tv.append("\n");
            }
        }
 }
