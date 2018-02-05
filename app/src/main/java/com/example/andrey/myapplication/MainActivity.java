@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewDebug;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -27,9 +29,22 @@ public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
     final String DIR_SD = "OSK";
-    final String FILENAME_SD = "part.log";
+    final String FILENAME_SD = "someB.log";
     TextView tv;
     HashSet<Integer> tasksID;
+
+    enum znoFields{
+        SDCIINFO,
+        SDESPPID,
+        SDCLASSIF,
+        SDSTATUS,
+        SDCIADDR,
+        SDTASKID,
+        SDSERVICE,
+        SDINFO,
+        SDCREATED,
+        SDDEADLINE
+    }
     
 
     @Override
@@ -54,24 +69,31 @@ public class MainActivity extends AppCompatActivity {
            File sdPath = Environment.getExternalStorageDirectory();
            sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
            File sdFile = new File(sdPath, FILENAME_SD);
-           ZNO zno = new ZNO();
            tasksID = new HashSet<>();
            try {
                BufferedReader br = new BufferedReader(new FileReader(sdFile));
                String jsonString;
                while ((jsonString = br.readLine()) != null) {
-                   /*Log.d(TAG, "jsonTest: " + jsonString);
+
+                   Gson gson = new Gson();
+                   ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
+                   for(ZNO z: znos) {
+                       Log.d(TAG, "jsonTest: " + z.SDTASKID);
+                   }
+
+                   /*           ZNO zno = new ZNO();
+                   Log.d(TAG, "jsonTest: " + jsonString);
                    if ((jsonString.length()<44)&(jsonString.substring(23,43)!="Получен массив задач")) continue;
                    jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                    JSONArray tasks = new JSONArray(new JSONTokener(jsonString));
                    for (int i = 0; i < tasks.length(); i++) {
                        JSONObject task = tasks.getJSONObject(i);
-                       tasksID.add(Integer.parseInt(task.getString(zno.SDTASKID)));
+                       tasksID.add(Integer.parseInt(task.getString(znoFields.SDTASKID.name())));
                        //tv.append(task.getString(zno.SDTASKID));
                        //tv.append("\n");
                    }*/
-                   if (jsonString.length()>43&&jsonString.substring(22,42)=="Получен массив задач")
-                   Log.d(TAG, "jsonTest: " + jsonString.substring(22,42));
+                   //if (jsonString.length()>43&&jsonString.substring(22,42)=="Получен массив задач")
+                   //Log.d(TAG, "jsonTest: " + jsonString.substring(22,42));
 
                }
            } catch (StringIndexOutOfBoundsException e){
