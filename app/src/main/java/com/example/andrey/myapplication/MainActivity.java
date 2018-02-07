@@ -9,6 +9,7 @@ import android.view.ViewDebug;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
     final String DIR_SD = "OSK";
-    final String FILENAME_SD = "someB.log";
+    final String FILENAME_SD = "ServiceLog.log";
     TextView tv;
     HashSet<Integer> tasksID;
 
@@ -69,17 +70,30 @@ public class MainActivity extends AppCompatActivity {
            File sdPath = Environment.getExternalStorageDirectory();
            sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
            File sdFile = new File(sdPath, FILENAME_SD);
+
            tasksID = new HashSet<>();
            try {
                BufferedReader br = new BufferedReader(new FileReader(sdFile));
                String jsonString;
-               while ((jsonString = br.readLine()) != null) {
+               while ((jsonString = br.readLine()) != null)  {
+                   if (jsonString.contains("Получен массив задач: [{"))
+                       jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
+                   else
+                       continue;
 
-                   Gson gson = new Gson();
-                   ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
-                   for(ZNO z: znos) {
-                       Log.d(TAG, "jsonTest: " + z.SDTASKID);
+                   try{
+                       Gson gson = new Gson();
+                       ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
+                       for(ZNO z: znos) {
+                           tasksID.add((Integer.parseInt(z.SDTASKID)));
+                     //      Log.d(TAG, "jsonTest: " + z.SDTASKID);
+                       }
+                   } catch (JsonParseException e){
+                       Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
+                       e.printStackTrace();
                    }
+
+
 
                    /*           ZNO zno = new ZNO();
                    Log.d(TAG, "jsonTest: " + jsonString);
@@ -96,21 +110,19 @@ public class MainActivity extends AppCompatActivity {
                    //Log.d(TAG, "jsonTest: " + jsonString.substring(22,42));
 
                }
-           } catch (StringIndexOutOfBoundsException e){
-               e.printStackTrace();
-           //} //catch (JSONException e) {
-               //Log.d(TAG, "jsonTest: " + e.getMessage());
-              // e.printStackTrace();
+
+
            } catch (FileNotFoundException e) {
                e.printStackTrace();
            } catch (IOException e) {
                e.printStackTrace();
            }
             //TODO проверить при 0 кол-ве
+           tv.append("Запросов: "+String.valueOf(tasksID.size())+"\n");
+
            Iterator<Integer> iterator = tasksID.iterator();
            while (iterator.hasNext()){
-               tv.append(String.valueOf(iterator.next()));
-               tv.append("\n");
+               tv.append(String.valueOf(iterator.next())+"\n");
            }
        }
 }
