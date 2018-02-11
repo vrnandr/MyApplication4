@@ -1,5 +1,6 @@
 package com.example.andrey.myapplication;
 
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -31,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     final String TAG = "myLogs";
     final String DIR_SD = "OSK";
     final String FILENAME_SD = "ServiceLog.log";
+    long size;
     TextView tv;
     HashSet<Integer> tasksID;
 
@@ -61,68 +63,66 @@ public class MainActivity extends AppCompatActivity {
         jsonTest();
     }
 
-       void jsonTest() {
-           if (!Environment.getExternalStorageState().equals(
-                   Environment.MEDIA_MOUNTED)) {
-               Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
-               return;
-           }
-           File sdPath = Environment.getExternalStorageDirectory();
-           sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
-           File sdFile = new File(sdPath, FILENAME_SD);
+    void jsonTest() {
+        if (!Environment.getExternalStorageState().equals(
+                Environment.MEDIA_MOUNTED)) {
+            Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
+            return;
+        }
+        File sdPath = Environment.getExternalStorageDirectory();
+        sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
+        File sdFile = new File(sdPath, FILENAME_SD);
+        size = sdFile.length();
 
-           tasksID = new HashSet<>();
-           try {
-               BufferedReader br = new BufferedReader(new FileReader(sdFile));
-               String jsonString;
-               while ((jsonString = br.readLine()) != null)  {
-                   if (jsonString.contains("Получен массив задач: [{"))
-                       jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
-                   else
-                       continue;
+        tasksID = new HashSet<>();
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(sdFile));
+            String jsonString;
+            while ((jsonString = br.readLine()) != null)  {
+                if (jsonString.contains("Получен массив задач: [{"))
+                    jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
+                else
+                    continue;
 
-                   try{
-                       Gson gson = new Gson();
-                       ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
-                       for(ZNO z: znos) {
-                           tasksID.add((Integer.parseInt(z.SDTASKID)));
+                try{
+                    Gson gson = new Gson();
+                    ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
+                    for(ZNO z: znos) {
+                        tasksID.add((Integer.parseInt(z.SDTASKID)));
                      //      Log.d(TAG, "jsonTest: " + z.SDTASKID);
-                       }
-                   } catch (JsonParseException e){
-                       Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
-                       e.printStackTrace();
-                   }
+                    }
+                } catch (JsonParseException e){
+                    Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
+                    e.printStackTrace();
+                }
+            }
 
 
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //TODO проверить при 0 кол-ве
+        tv.append("Запросов: "+String.valueOf(tasksID.size())+"\n");
 
-                   /*           ZNO zno = new ZNO();
-                   Log.d(TAG, "jsonTest: " + jsonString);
-                   if ((jsonString.length()<44)&(jsonString.substring(23,43)!="Получен массив задач")) continue;
-                   jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
-                   JSONArray tasks = new JSONArray(new JSONTokener(jsonString));
-                   for (int i = 0; i < tasks.length(); i++) {
-                       JSONObject task = tasks.getJSONObject(i);
-                       tasksID.add(Integer.parseInt(task.getString(znoFields.SDTASKID.name())));
-                       //tv.append(task.getString(zno.SDTASKID));
-                       //tv.append("\n");
-                   }*/
-                   //if (jsonString.length()>43&&jsonString.substring(22,42)=="Получен массив задач")
-                   //Log.d(TAG, "jsonTest: " + jsonString.substring(22,42));
+        Iterator<Integer> iterator = tasksID.iterator();
+        while (iterator.hasNext()){
+            tv.append(String.valueOf(iterator.next())+"\n");
+        }
+    }
 
-               }
+    class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
+
+        //на выходе должен быть набор запросов, который потом занести в базу
+        @Override
+        protected HashSet<ZNO> doInBackground(Void... strData) {
+
+        return null;
+        }
+
+     }
 
 
-           } catch (FileNotFoundException e) {
-               e.printStackTrace();
-           } catch (IOException e) {
-               e.printStackTrace();
-           }
-            //TODO проверить при 0 кол-ве
-           tv.append("Запросов: "+String.valueOf(tasksID.size())+"\n");
-
-           Iterator<Integer> iterator = tasksID.iterator();
-           while (iterator.hasNext()){
-               tv.append(String.valueOf(iterator.next())+"\n");
-           }
-       }
 }
+//TODO в ZNO добавить equals, hashCode для корректной работы HashSet<ZNO>
