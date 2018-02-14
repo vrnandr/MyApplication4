@@ -24,6 +24,8 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 
@@ -117,12 +119,46 @@ public class MainActivity extends AppCompatActivity {
         //на выходе должен быть набор запросов, который потом занести в базу
         @Override
         protected HashSet<ZNO> doInBackground(Void... strData) {
-
-        return null;
+            if (!Environment.getExternalStorageState().equals(
+                    Environment.MEDIA_MOUNTED)) {
+                Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
+                return null;
+            }
+            File sdPath = Environment.getExternalStorageDirectory();
+            sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
+            File sdFile = new File(sdPath, FILENAME_SD);
+//            size = sdFile.length();
+//            tasksID = new HashSet<>();
+            HashSet<ZNO> returnZNOs = new HashSet<ZNO>();
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(sdFile));
+                String jsonString;
+                while ((jsonString = br.readLine()) != null)  {
+                    if (jsonString.contains("Получен массив задач: [{"))
+                        jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
+                    else
+                        continue;
+                    try{
+                        Gson gson = new Gson();
+                        ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
+                        //returnZNOs.addAll(Arrays.asList(znos));
+                        for(ZNO z: znos) {
+                            returnZNOs.add(z);
+                        }
+                    } catch (JsonParseException e){
+                        Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
+                        e.printStackTrace();
+                    }
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
         }
 
      }
 
 
 }
-//TODO в ZNO добавить equals, hashCode для корректной работы HashSet<ZNO>
