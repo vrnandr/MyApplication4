@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewDebug;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -34,23 +35,9 @@ public class MainActivity extends AppCompatActivity {
     final String TAG = "myLogs";
     final String DIR_SD = "OSK";
     final String FILENAME_SD = "ServiceLog.log";
-    long size;
     TextView tv;
+    ProgressBar pg;
     HashSet<Integer> tasksID;
-
-    enum znoFields{
-        SDCIINFO,
-        SDESPPID,
-        SDCLASSIF,
-        SDSTATUS,
-        SDCIADDR,
-        SDTASKID,
-        SDSERVICE,
-        SDINFO,
-        SDCREATED,
-        SDDEADLINE
-    }
-    
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,11 +45,14 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Log.d(TAG,"Активность видна");
         tv = findViewById(R.id.textView);
+        pg = findViewById(R.id.progressBar);
+        pg.setScaleY(5f);
     }
 
     public void onclick (View view){
         Log.d(TAG,"Кнопка нажата");
-        jsonTest();
+        MyTask mt = new MyTask();
+        mt.execute();
     }
 
     void jsonTest() {
@@ -74,8 +64,6 @@ public class MainActivity extends AppCompatActivity {
         File sdPath = Environment.getExternalStorageDirectory();
         sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
         File sdFile = new File(sdPath, FILENAME_SD);
-        size = sdFile.length();
-
         tasksID = new HashSet<>();
         try {
             BufferedReader br = new BufferedReader(new FileReader(sdFile));
@@ -114,26 +102,45 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
+    public class MyTask extends AsyncTask<Void,Long,HashSet<ZNO>>{
+        long size;
+        float k;
+        File sdPath;
+        File sdFile;
+        long totalReadBytes=0;
 
-        //на выходе должен быть набор запросов, который потом занести в базу
         @Override
-        protected HashSet<ZNO> doInBackground(Void... strData) {
+        protected void onPreExecute (){
+            Log.d(TAG, "onPreExecute: начало потока");
+            //TODO тут хуйня насчет открытия файла в преекзекут
+            pg.setVisibility(ProgressBar.VISIBLE);
             if (!Environment.getExternalStorageState().equals(
                     Environment.MEDIA_MOUNTED)) {
                 Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
-                return null;
+                return;
             }
-            File sdPath = Environment.getExternalStorageDirectory();
+            sdPath = Environment.getExternalStorageDirectory();
             sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
-            File sdFile = new File(sdPath, FILENAME_SD);
-//            size = sdFile.length();
-//            tasksID = new HashSet<>();
+            sdFile = new File(sdPath, FILENAME_SD);
+            size = sdFile.length();
+            k = 1;
+            if(size> Integer.MAX_VALUE)
+                k = size / Integer.MAX_VALUE;
+            pg.setMax((int)(size/k));
+            Log.d(TAG, "onPreExecute: k="+Float.toString(k)+" size="+Long.toString(size)+" "+pg.getMax());
+        }
+
+        //на выходе должен быть набор запросов, который потом занести в базу
+        @Override
+        protected HashSet<ZNO> doInBackground(Void... params) {
+
             HashSet<ZNO> returnZNOs = new HashSet<ZNO>();
             try {
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
                 String jsonString;
                 while ((jsonString = br.readLine()) != null)  {
+                    totalReadBytes+= jsonString.length();
+                    publishProgress(totalReadBytes);
                     if (jsonString.contains("Получен массив задач: [{"))
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                     else
@@ -155,10 +162,27 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            return null;
+            return returnZNOs;
         }
 
-     }
+        @Override
+        protected void onProgressUpdate (Long... values){
+            super.onProgressUpdate(values);
+            pg.setProgress((int)(totalReadBytes/k));
+        }
+
+        @Override
+        protected void onPostExecute (HashSet<ZNO> result){
+            super.onPostExecute(result);
+            pg.setVisibility(ProgressBar.INVISIBLE);
+            Log.d(TAG, "onPostExecute: конец потока");
+            tv.append("Запросов: "+String.valueOf(result.size())+"\n");
+            for (ZNO z: result)
+                tv.append(z.SDTASKID+"\n");
+        }
+    }
+
+
 
 
 }
