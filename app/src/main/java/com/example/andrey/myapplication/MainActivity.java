@@ -53,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG,"Кнопка нажата");
         MyTask mt = new MyTask();
         mt.execute();
+        //TaskForCountLines tk = new TaskForCountLines();
+        //tk.execute();
     }
 
     void jsonTest() {
@@ -102,45 +104,92 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public class MyTask extends AsyncTask<Void,Long,HashSet<ZNO>>{
-        long size;
-        float k;
-        File sdPath;
-        File sdFile;
-        long totalReadBytes=0;
+    public class TaskForCountLines extends AsyncTask<Void,Void, Integer>{
 
         @Override
         protected void onPreExecute (){
+            super.onPreExecute();
             Log.d(TAG, "onPreExecute: начало потока");
-            //TODO тут хуйня насчет открытия файла в преекзекут
-            pg.setVisibility(ProgressBar.VISIBLE);
+        }
+
+        @Override
+        protected Integer doInBackground (Void... params){
             if (!Environment.getExternalStorageState().equals(
                     Environment.MEDIA_MOUNTED)) {
                 Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
-                return;
+                return null;
             }
-            sdPath = Environment.getExternalStorageDirectory();
+            File sdPath = Environment.getExternalStorageDirectory();
             sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
-            sdFile = new File(sdPath, FILENAME_SD);
-            size = sdFile.length();
-            k = 1;
-            if(size> Integer.MAX_VALUE)
-                k = size / Integer.MAX_VALUE;
-            pg.setMax((int)(size/k));
-            Log.d(TAG, "onPreExecute: k="+Float.toString(k)+" size="+Long.toString(size)+" "+pg.getMax());
+            File sdFile = new File(sdPath, FILENAME_SD);
+            int count =0;
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(sdFile));
+                String line;
+                while ((line = br.readLine()) != null)  {
+                    count++;
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return count;
         }
 
-        //на выходе должен быть набор запросов, который потом занести в базу
+        @Override
+        protected void onPostExecute (Integer count){
+            super.onPostExecute(count);
+            Log.d(TAG, "onPostExecute: конец потока");
+            tv.append("Всего строк "+count);
+        }
+    }
+
+
+    public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
+
+        @Override
+        protected void onPreExecute (){
+            super.onPreExecute();
+            Log.d(TAG, "onPreExecute: начало потока");
+            pg.setVisibility(ProgressBar.VISIBLE);
+
+        }
+
         @Override
         protected HashSet<ZNO> doInBackground(Void... params) {
+
+            if (!Environment.getExternalStorageState().equals(
+                    Environment.MEDIA_MOUNTED)) {
+                Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
+                return null;
+            }
+            File sdPath = Environment.getExternalStorageDirectory();
+            sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
+            File sdFile = new File(sdPath, FILENAME_SD);
+
+            //счетчик строк
+            Integer count =-1;
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(sdFile));
+                while (br.readLine() != null)  {
+                    count++;
+                }
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //конец счетчика строк
 
             HashSet<ZNO> returnZNOs = new HashSet<ZNO>();
             try {
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
                 String jsonString;
+                Integer totalReadLines=0;
                 while ((jsonString = br.readLine()) != null)  {
-                    totalReadBytes+= jsonString.length();
-                    publishProgress(totalReadBytes);
+                    totalReadLines++;
+                    publishProgress(count, totalReadLines);
                     if (jsonString.contains("Получен массив задач: [{"))
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                     else
@@ -148,10 +197,7 @@ public class MainActivity extends AppCompatActivity {
                     try{
                         Gson gson = new Gson();
                         ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
-                        //returnZNOs.addAll(Arrays.asList(znos));
-                        for(ZNO z: znos) {
-                            returnZNOs.add(z);
-                        }
+                        returnZNOs.addAll(Arrays.asList(znos));
                     } catch (JsonParseException e){
                         Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
                         e.printStackTrace();
@@ -166,9 +212,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onProgressUpdate (Long... values){
+        protected void onProgressUpdate (Integer... values){
             super.onProgressUpdate(values);
-            pg.setProgress((int)(totalReadBytes/k));
+            //TODO вот тут как-то странно
+            pg.setMax(values[0]);
+            pg.setProgress(values[1]);
         }
 
         @Override
