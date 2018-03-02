@@ -33,7 +33,7 @@ import java.util.Iterator;
 public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
-    final String DIR_SD = "OSK";
+    final String DIR_SD = "OSKMobile";
     final String FILENAME_SD = "ServiceLog.log";
     TextView tv;
     ProgressBar pg;
@@ -186,17 +186,21 @@ public class MainActivity extends AppCompatActivity {
             try {
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
                 String jsonString;
+                String dateStamp;
                 Integer totalReadLines=0;
-                while ((jsonString = br.readLine()) != null)  {
+                while ((jsonString = br.readLine()) != null) {
                     totalReadLines++;
                     publishProgress(count, totalReadLines);
-                    if (jsonString.contains("Получен массив задач: [{"))
+                    if (jsonString.contains("Получен массив задач: [{")) {
+                        dateStamp = jsonString.substring(0,20); //хардкод
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
+                    }
                     else
                         continue;
                     try{
                         Gson gson = new Gson();
                         ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
+                        for (ZNO z:znos) z.datestamp = dateStamp;
                         returnZNOs.addAll(Arrays.asList(znos));
                     } catch (JsonParseException e){
                         Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
@@ -225,8 +229,8 @@ public class MainActivity extends AppCompatActivity {
             pg.setVisibility(ProgressBar.INVISIBLE);
             Log.d(TAG, "onPostExecute: конец потока");
             tv.append("Запросов: "+String.valueOf(result.size())+"\n");
-            for (ZNO z: result)
-                tv.append(z.SDTASKID+"\n");
+            //for (ZNO z: result)
+              //  tv.append(z.datestamp+" "+z.SDTASKID+"\n");
         }
     }
 
