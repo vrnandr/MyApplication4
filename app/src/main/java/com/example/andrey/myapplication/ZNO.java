@@ -3,7 +3,7 @@ package com.example.andrey.myapplication;
 import java.util.Date;
 
 class ZNO {
-    transient String datestamp;
+    String datestamp;
     String SDCIINFO;
     String SDESPPID;
     String SDCLASSIF;
