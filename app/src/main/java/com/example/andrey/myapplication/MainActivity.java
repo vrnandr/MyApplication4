@@ -13,6 +13,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 
 import org.json.JSONArray;
@@ -25,12 +26,15 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.concurrent.ExecutionException;
 
 /*
  кнопка обновить данные считывает лог файл и зпаисывает запросы в свой файл, фалй наверно лучше хрнаить как текстовый с json
@@ -44,9 +48,11 @@ public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
     final String DIR_SD = "OSKMobile";
-    final String FILENAME_SD = "ServiceLog.log";
+    //final String FILENAME_SD = "ServiceLog.log";
+    final String FILENAME_SD = "part.log";
     TextView tv;
     HashSet<Integer> tasksID;
+    HashSet<ZNO> znos;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,9 +67,25 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG,"Кнопка нажата");
         MyTask mt = new MyTask(this);
         mt.execute();
+        try {
+            znos = mt.get();
+            Gson gson = new Gson();
+            gson.toJson(znos, new FileWriter("db.json"));
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Iterator it = znos.iterator();
+        while(it.hasNext()) {
+            tv.append(it.next()+"\n");
+        }
     }
 
-    public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
+        public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
 
         ProgressDialog pg;
         public  MyTask (Activity activity){
@@ -125,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
                 String jsonString;
                 String dateStamp;
                 while ((jsonString = br.readLine()) != null) {
-                    publishProgress(jsonString.length());
+                    publishProgress(jsonString.getBytes().length);
                     if (jsonString.contains("Получен массив задач: [{")) {
                         dateStamp = jsonString.substring(0,20); //хардкод
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
@@ -161,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(result);
             Log.d(TAG, "onPostExecute: конец потока");
             if (pg.isShowing()) pg.dismiss();
-            tv.append("Запросов: "+String.valueOf(result.size())+"\n");
+            //tv.append("Запросов: "+String.valueOf(result.size())+"\n");
             //for (ZNO z: result)
               //  tv.append(z.datestamp+" "+z.SDTASKID+"\n");
         }
