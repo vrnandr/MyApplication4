@@ -48,8 +48,9 @@ public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
     final String DIR_SD = "OSKMobile";
-    //final String FILENAME_SD = "ServiceLog.log";
-    final String FILENAME_SD = "part.log";
+    final String FILENAME_SD = "ServiceLog.log";
+    final String DB = "db.json";
+    //final String FILENAME_SD = "part.log";
     TextView tv;
     HashSet<Integer> tasksID;
     HashSet<ZNO> znos;
@@ -61,31 +62,27 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG,"Активность видна");
         tv = findViewById(R.id.textView);
 
+        if (!isDBPresent()) parseLog();
+
+    }
+
+    boolean isDBPresent (){
+        File file = new File(DB);
+        return (file.exists()&&!file.isDirectory());
+    }
+
+    void parseLog(){
+        new MyTask(this).execute();
+
     }
 
     public void onclick (View view){
         Log.d(TAG,"Кнопка нажата");
-        MyTask mt = new MyTask(this);
-        mt.execute();
-        try {
-            znos = mt.get();
-            Gson gson = new Gson();
-            gson.toJson(znos, new FileWriter("db.json"));
+        new MyTask(this).execute();
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Iterator it = znos.iterator();
-        while(it.hasNext()) {
-            tv.append(it.next()+"\n");
-        }
     }
 
-        public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
+    public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
 
         ProgressDialog pg;
         public  MyTask (Activity activity){
@@ -125,24 +122,9 @@ public class MainActivity extends AppCompatActivity {
             sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
             File sdFile = new File(sdPath, FILENAME_SD);
 
-            //счетчик строк
-            /*
-            Integer count =-1;
-            try {
-                BufferedReader br = new BufferedReader(new FileReader(sdFile));
-                while (br.readLine() != null)  {
-                    count++;
-                }
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            */
-            //конец счетчика строк
-
             HashSet<ZNO> returnZNOs = new HashSet<>();
             try {
+                //разбор ServiceLog.log и добавление запросов в набор запросов
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
                 String jsonString;
                 String dateStamp;
@@ -164,12 +146,24 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
+                br.close();
+
+                //запись разобраных запросов в формате json в файл db.json
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
+                        openFileOutput(DB, MODE_APPEND|MODE_PRIVATE)));
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                bw.write(gson.toJson(returnZNOs));
+                bw.close();
+
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+
             return returnZNOs;
+
         }
 
         @Override
@@ -183,6 +177,9 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(result);
             Log.d(TAG, "onPostExecute: конец потока");
             if (pg.isShowing()) pg.dismiss();
+
+
+
             //tv.append("Запросов: "+String.valueOf(result.size())+"\n");
             //for (ZNO z: result)
               //  tv.append(z.datestamp+" "+z.SDTASKID+"\n");
