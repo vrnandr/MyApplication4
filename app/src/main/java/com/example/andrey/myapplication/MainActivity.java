@@ -1,7 +1,9 @@
 package com.example.andrey.myapplication;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
@@ -62,12 +64,32 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG,"Активность видна");
         tv = findViewById(R.id.textView);
 
-        if (!isDBPresent()) parseLog();
+        if (!isDBPresent())
+        {
+            Log.d(TAG, "onCreate: Разбор файла");
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setTitle("Нет данных")
+                    .setMessage("Нет сохраненых данных о запросах\nХотите выполнить разбор лога Мобильного сотрудника")
+                    .setPositiveButton("Да", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            parseLog();
+                        }
+                    })
+                    .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                        }
+                    });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        }
 
     }
 
     boolean isDBPresent (){
-        File file = new File(DB);
+        File file = new File(getApplicationContext().getFilesDir(),DB);
         return (file.exists()&&!file.isDirectory());
     }
 
