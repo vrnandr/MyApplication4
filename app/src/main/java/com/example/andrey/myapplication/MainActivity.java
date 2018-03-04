@@ -50,9 +50,9 @@ public class MainActivity extends AppCompatActivity {
 
     final String TAG = "myLogs";
     final String DIR_SD = "OSKMobile";
-    final String FILENAME_SD = "ServiceLog.log";
     final String DB = "db.json";
-    //final String FILENAME_SD = "part.log";
+    //final String FILENAME_SD = "ServiceLog.log";
+    final String FILENAME_SD = "part.log";
     TextView tv;
     HashSet<Integer> tasksID;
     HashSet<ZNO> znos;
@@ -69,11 +69,12 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "onCreate: Разбор файла");
             AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
             builder.setTitle("Нет данных")
-                    .setMessage("Нет сохраненых данных о запросах\nХотите выполнить разбор лога Мобильного сотрудника")
+                    .setMessage("Нет сохраненых данных о запросах! Хотите выполнить разбор лога Мобильного сотрудника?")
                     .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
-                            parseLog();
+                            znos = new HashSet<>();
+;                           parseLog();
                         }
                     })
                     .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
@@ -134,6 +135,25 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected HashSet<ZNO> doInBackground(Void... params) {
+            HashSet<ZNO> returnZNOs = new HashSet<>();
+            //если есть db.json сначала считать его
+            if (isDBPresent()){
+                Log.d(TAG, "doInBackground: обраобтка существующего DB");
+                try {
+                    
+                    BufferedReader readerDBJson = new BufferedReader(new FileReader(new File(getApplicationContext().getFilesDir(), DB)));
+                    Gson gson = new Gson();
+                    ZNO[] z = gson.fromJson(readerDBJson, ZNO[].class);
+                    returnZNOs.addAll(Arrays.asList(z));
+                } catch (JsonParseException e) {
+                    e.printStackTrace();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            //
+
 
             if (!Environment.getExternalStorageState().equals(
                     Environment.MEDIA_MOUNTED)) {
@@ -144,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
             sdPath = new File(sdPath.getAbsolutePath() + "/" + DIR_SD);
             File sdFile = new File(sdPath, FILENAME_SD);
 
-            HashSet<ZNO> returnZNOs = new HashSet<>();
+
             try {
                 //разбор ServiceLog.log и добавление запросов в набор запросов
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
