@@ -10,33 +10,23 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewDebug;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.lang.reflect.Array;
+
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.concurrent.ExecutionException;
+
 
 /*
  кнопка обновить данные считывает лог файл и зпаисывает запросы в свой файл, фалй наверно лучше хрнаить как текстовый с json
@@ -51,11 +41,11 @@ public class MainActivity extends AppCompatActivity {
     final String TAG = "myLogs";
     final String DIR_SD = "OSKMobile";
     final String DB = "db.json";
-    //final String FILENAME_SD = "ServiceLog.log";
-    final String FILENAME_SD = "part.log";
+    final String FILENAME_SD = "ServiceLog.log";
+    //final String FILENAME_SD = "part.log";
     TextView tv;
-    HashSet<Integer> tasksID;
-    HashSet<ZNO> znos;
+    //HashSet<Integer> tasksID;
+    //HashSet<ZNO> znos;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,16 +63,10 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
-                            znos = new HashSet<>();
-;                           parseLog();
+                           parseLog();
                         }
                     })
-                    .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-
-                        }
-                    });
+                    .setNegativeButton("Нет", null);
             AlertDialog dialog = builder.create();
             dialog.show();
         }
@@ -138,18 +122,19 @@ public class MainActivity extends AppCompatActivity {
             HashSet<ZNO> returnZNOs = new HashSet<>();
             //если есть db.json сначала считать его
             if (isDBPresent()){
-                Log.d(TAG, "doInBackground: обраобтка существующего DB");
+                Log.d(TAG, "doInBackground: обработка существующего DB");
                 try {
                     
                     BufferedReader readerDBJson = new BufferedReader(new FileReader(new File(getApplicationContext().getFilesDir(), DB)));
                     Gson gson = new Gson();
                     ZNO[] z = gson.fromJson(readerDBJson, ZNO[].class);
+                    Log.d(TAG, "doInBackground: запросов в DB: "+z.length);
                     returnZNOs.addAll(Arrays.asList(z));
-                } catch (JsonParseException e) {
-                    e.printStackTrace();
-                } catch (FileNotFoundException e) {
+                    readerDBJson.close();
+                } catch (JsonParseException|IOException e) {
                     e.printStackTrace();
                 }
+
             }
 
             //
@@ -192,13 +177,11 @@ public class MainActivity extends AppCompatActivity {
 
                 //запись разобраных запросов в формате json в файл db.json
                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-                        openFileOutput(DB, MODE_APPEND|MODE_PRIVATE)));
+                        openFileOutput(DB, MODE_PRIVATE)));
                 Gson gson = new GsonBuilder().setPrettyPrinting().create();
                 bw.write(gson.toJson(returnZNOs));
                 bw.close();
 
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }

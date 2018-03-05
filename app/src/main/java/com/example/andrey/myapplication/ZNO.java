@@ -1,7 +1,5 @@
 package com.example.andrey.myapplication;
 
-import java.util.Date;
-
 class ZNO {
     String datestamp;
     String SDCIINFO;
