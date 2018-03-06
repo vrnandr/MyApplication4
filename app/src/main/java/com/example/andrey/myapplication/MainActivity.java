@@ -91,6 +91,8 @@ public class MainActivity extends AppCompatActivity {
 
     public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
 
+        int k; //коофициент для частоты обновлния прогрессдиалога
+
         ProgressDialog pg;
         public  MyTask (Activity activity){
             pg = new ProgressDialog(activity);
@@ -113,6 +115,7 @@ public class MainActivity extends AppCompatActivity {
             File sdFile = new File(sdPath, FILENAME_SD);
 
             if(sdFile.length()<Integer.MAX_VALUE) pg.setMax((int)sdFile.length()); //хзхз когда файл больше ~2,147Гб
+            k =pg.getMax()/1000; //хардкод
             pg.show();
 
         }
@@ -155,8 +158,14 @@ public class MainActivity extends AppCompatActivity {
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
                 String jsonString;
                 String dateStamp;
+                int countBytes=0;
                 while ((jsonString = br.readLine()) != null) {
-                    publishProgress(jsonString.getBytes().length);
+                    countBytes+=jsonString.getBytes().length;
+                    if (countBytes>k) {
+                        publishProgress(countBytes);
+                        countBytes =0;
+                    }
+
                     if (jsonString.contains("Получен массив задач: [{")) {
                         dateStamp = jsonString.substring(0,20); //хардкод
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
@@ -177,7 +186,7 @@ public class MainActivity extends AppCompatActivity {
 
                 //запись разобраных запросов в формате json в файл db.json
                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-                        openFileOutput(DB, MODE_PRIVATE)));
+                        openFileOutput(DB, MODE_WORLD_READABLE)));
                 Gson gson = new GsonBuilder().setPrettyPrinting().create();
                 bw.write(gson.toJson(returnZNOs));
                 bw.close();
