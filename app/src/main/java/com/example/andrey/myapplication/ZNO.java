@@ -1,6 +1,7 @@
 package com.example.andrey.myapplication;
 
 class ZNO {
+    String dateClose;
     String datestamp;
     String SDCIINFO;
     String SDESPPID;

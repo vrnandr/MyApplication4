@@ -24,8 +24,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.TreeSet;
 
 
 /*
@@ -89,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public class MyTask extends AsyncTask<Void,Integer,HashSet<ZNO>>{
+    public class MyTask extends AsyncTask<Void,Integer,LinkedHashSet<ZNO>>{
 
         int k; //коофициент для частоты обновлния прогрессдиалога
 
@@ -121,8 +125,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected HashSet<ZNO> doInBackground(Void... params) {
-            HashSet<ZNO> returnZNOs = new HashSet<>();
+        protected LinkedHashSet<ZNO> doInBackground(Void... params) {
+            LinkedHashSet<ZNO> returnZNOs = new LinkedHashSet<>();
             //если есть db.json сначала считать его
             if (isDBPresent()){
                 Log.d(TAG, "doInBackground: обработка существующего DB");
@@ -207,12 +211,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onPostExecute (HashSet<ZNO> result){
+        protected void onPostExecute (LinkedHashSet<ZNO> result){
             super.onPostExecute(result);
             Log.d(TAG, "onPostExecute: конец потока");
             if (pg.isShowing()) pg.dismiss();
 
-
+            TreeSet<Integer> taskIDs = new TreeSet<>();
+            for(ZNO z:result){
+                taskIDs.add(Integer.parseInt(z.SDTASKID));
+            }
+            tv.append("Всего запросов: "+taskIDs.size()+"\n");
+            tv.append("Последний запрос: "+taskIDs.last()+"\n");
+            final ArrayList<ZNO> znoList = new ArrayList<>(result);
+            ZNO z = znoList.get(znoList.size()-1);
+            tv.append(z.toString());
 
             //tv.append("Запросов: "+String.valueOf(result.size())+"\n");
             //for (ZNO z: result)
