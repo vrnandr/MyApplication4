@@ -26,9 +26,11 @@ import java.io.OutputStreamWriter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.TreeSet;
 
 
@@ -46,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     final String DIR_SD = "OSKMobile";
     final String DB = "db.json";
     final String FILENAME_SD = "ServiceLog.log";
-    //final String FILENAME_SD = "part.log";
+    //final String FILENAME_SD = "log10log";
     TextView tv;
     //HashSet<Integer> tasksID;
     //HashSet<ZNO> znos;
@@ -188,11 +190,23 @@ public class MainActivity extends AppCompatActivity {
                 }
                 br.close();
 
+                ArrayList<ZNO> znoList = new ArrayList<>(returnZNOs);
+                Map<String, Integer> zMap = new HashMap<>();
+                for(int i=0;i<znoList.size();i++){
+                    zMap.put(znoList.get(i).SDTASKID,i);
+                }
+
+                for(ZNO z: znoList){
+                    z.dateClose=znoList.get(zMap.get(z.SDTASKID)).datestamp;
+                }
+
+
                 //запись разобраных запросов в формате json в файл db.json
                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
                         openFileOutput(DB, MODE_WORLD_READABLE)));
                 Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                bw.write(gson.toJson(returnZNOs));
+                //bw.write(gson.toJson(returnZNOs));
+                bw.write(gson.toJson(znoList));
                 bw.close();
 
             } catch (IOException e) {
@@ -223,8 +237,18 @@ public class MainActivity extends AppCompatActivity {
             tv.append("Всего запросов: "+taskIDs.size()+"\n");
             tv.append("Последний запрос: "+taskIDs.last()+"\n");
             final ArrayList<ZNO> znoList = new ArrayList<>(result);
-            ZNO z = znoList.get(znoList.size()-1);
-            tv.append(z.toString());
+            ZNO lastZNO = znoList.get(znoList.size()-1);
+            tv.append(lastZNO.toString());
+
+            Map<String, Integer> zMap = new HashMap<>();
+            for(int i=0;i<znoList.size();i++){
+                zMap.put(znoList.get(i).SDTASKID,i);
+            }
+
+            for(ZNO z: znoList){
+                z.dateClose=znoList.get(zMap.get(z.SDTASKID)).datestamp;
+            }
+
 
             //tv.append("Запросов: "+String.valueOf(result.size())+"\n");
             //for (ZNO z: result)
