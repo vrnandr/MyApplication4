@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Environment;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -26,11 +27,14 @@ import java.io.OutputStreamWriter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 
@@ -95,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public class MyTask extends AsyncTask<Void,Integer,LinkedHashSet<ZNO>>{
+    public class MyTask extends AsyncTask<Void,Integer,ArrayList<ZNO>>{
 
         int k; //коофициент для частоты обновлния прогрессдиалога
 
@@ -127,8 +131,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected LinkedHashSet<ZNO> doInBackground(Void... params) {
+        protected ArrayList<ZNO> doInBackground(Void... params) {
             LinkedHashSet<ZNO> returnZNOs = new LinkedHashSet<>();
+            Map<String, String> mapForCloseDate = new TreeMap<>();
+
             //если есть db.json сначала считать его
             if (isDBPresent()){
                 Log.d(TAG, "doInBackground: обработка существующего DB");
@@ -181,7 +187,10 @@ public class MainActivity extends AppCompatActivity {
                     try{
                         Gson gson = new Gson();
                         ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
-                        for (ZNO z:znos) z.datestamp = dateStamp;
+                        for (ZNO z:znos){
+                            z.datestamp = dateStamp;
+                            mapForCloseDate.put(z.SDTASKID,dateStamp);
+                        }
                         returnZNOs.addAll(Arrays.asList(znos));
                     } catch (JsonParseException e){
                         Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
@@ -190,16 +199,13 @@ public class MainActivity extends AppCompatActivity {
                 }
                 br.close();
 
+                //загнать данные из mapForCLoseDate в returnZNOs
+                //эта фигня для определения даты закрытия, время закрытия будет между последним вхождением запроса в лог
+                // и последним НЕ вхождением, имхо проще сделать последние вхождение
+                for (ZNO z:returnZNOs)
+                    z.dateClose=mapForCloseDate.get(z.SDTASKID);
+
                 ArrayList<ZNO> znoList = new ArrayList<>(returnZNOs);
-                Map<String, Integer> zMap = new HashMap<>();
-                for(int i=0;i<znoList.size();i++){
-                    zMap.put(znoList.get(i).SDTASKID,i);
-                }
-
-                for(ZNO z: znoList){
-                    z.dateClose=znoList.get(zMap.get(z.SDTASKID)).datestamp;
-                }
-
 
                 //запись разобраных запросов в формате json в файл db.json
                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
@@ -214,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
 
-            return returnZNOs;
+            return new ArrayList<>(returnZNOs);
 
         }
 
@@ -225,34 +231,21 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected void onPostExecute (LinkedHashSet<ZNO> result){
-            super.onPostExecute(result);
+        protected void onPostExecute (ArrayList<ZNO> znoList){
+            super.onPostExecute(znoList);
             Log.d(TAG, "onPostExecute: конец потока");
             if (pg.isShowing()) pg.dismiss();
 
-            TreeSet<Integer> taskIDs = new TreeSet<>();
+            /*TreeSet<Integer> taskIDs = new TreeSet<>();
             for(ZNO z:result){
                 taskIDs.add(Integer.parseInt(z.SDTASKID));
             }
             tv.append("Всего запросов: "+taskIDs.size()+"\n");
-            tv.append("Последний запрос: "+taskIDs.last()+"\n");
-            final ArrayList<ZNO> znoList = new ArrayList<>(result);
+            tv.append("Последний запрос: "+taskIDs.last()+"\n");*/
+
             ZNO lastZNO = znoList.get(znoList.size()-1);
             tv.append(lastZNO.toString());
 
-            Map<String, Integer> zMap = new HashMap<>();
-            for(int i=0;i<znoList.size();i++){
-                zMap.put(znoList.get(i).SDTASKID,i);
-            }
-
-            for(ZNO z: znoList){
-                z.dateClose=znoList.get(zMap.get(z.SDTASKID)).datestamp;
-            }
-
-
-            //tv.append("Запросов: "+String.valueOf(result.size())+"\n");
-            //for (ZNO z: result)
-              //  tv.append(z.datestamp+" "+z.SDTASKID+"\n");
         }
     }
 
