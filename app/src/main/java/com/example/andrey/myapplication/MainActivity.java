@@ -25,13 +25,17 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -95,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void onclick (View view){
         Log.d(TAG,"Кнопка нажата");
-        new MyTask(this).execute();
+        parseLog();
 
     }
 
@@ -245,6 +249,22 @@ public class MainActivity extends AppCompatActivity {
 
             ZNO lastZNO = znoList.get(znoList.size()-1);
             tv.append(lastZNO.toString());
+
+            /*SimpleDateFormat formatCurrentMonth = new SimpleDateFormat("yyyy-MM");
+            String currentMonth = formatCurrentMonth.format(new Date());*/
+            String  currentMonth= "2017-12";
+
+            Map<String,ZNO> mapZnosCurrentMonth = new TreeMap<>();
+            for(ZNO z: znoList)
+                if (z.dateClose.contains(currentMonth))
+                    mapZnosCurrentMonth.put(z.SDTASKID,z);
+
+            tv.append("\n");
+            tv.append("Запросов за текущий месяц: "+Integer.toString(mapZnosCurrentMonth.size())+"\n");
+            tv.append("Номер запроса Дата, время закрытия"+"\n");
+            for(ZNO z:mapZnosCurrentMonth.values()){
+                tv.append(z.SDTASKID +" "+z.dateClose+"\n");
+            }
 
         }
     }
