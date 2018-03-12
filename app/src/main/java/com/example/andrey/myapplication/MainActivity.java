@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -25,18 +26,22 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-
+import java.util.Calendar;
 
 /*
  кнопка обновить данные считывает лог файл и зпаисывает запросы в свой файл, фалй наверно лучше хрнаить как текстовый с json
@@ -103,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
 
         int k; //коофициент для частоты обновлния прогрессдиалога
 
+
         ProgressDialog pg;
         public  MyTask (Activity activity){
             pg = new ProgressDialog(activity);
@@ -133,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected ArrayList<ZNO> doInBackground(Void... params) {
             LinkedHashSet<ZNO> returnZNOs = new LinkedHashSet<>();
-            Map<String, String> mapForCloseDate = new TreeMap<>();
+            Map<String, Date> mapForCloseDate = new TreeMap<>();
 
             //если есть db.json сначала считать его
             if (isDBPresent()){
@@ -169,7 +175,8 @@ public class MainActivity extends AppCompatActivity {
                 //разбор ServiceLog.log и добавление запросов в набор запросов
                 BufferedReader br = new BufferedReader(new FileReader(sdFile));
                 String jsonString;
-                String dateStamp;
+                Date dateStamp;
+                SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 int countBytes=0;
                 while ((jsonString = br.readLine()) != null) {
                     countBytes+=jsonString.getBytes().length;
@@ -179,16 +186,19 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (jsonString.contains("Получен массив задач: [{")) {
-                        dateStamp = jsonString.substring(0,20); //хардкод
+                        dateStamp = format.parse(jsonString.substring(0,20));
+                        //jsonString.substring(0,20); //хардкод
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                     }
                     else
                         continue;
                     try{
-                        Gson gson = new Gson();
+                        //Gson gson = new Gson();
+                        Gson gson = new GsonBuilder()
+                                .setDateFormat("yyyy-MM-dd HH:mm:ss").create();
                         ZNO[] znos = gson.fromJson(jsonString,ZNO[].class);
                         for (ZNO z:znos){
-                            z.datestamp = dateStamp;
+                            z.dateStamp = dateStamp;
                             mapForCloseDate.put(z.SDTASKID,dateStamp);
                         }
                         returnZNOs.addAll(Arrays.asList(znos));
@@ -198,6 +208,9 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 br.close();
+
+                //2017-12-06 15:43:13 пример
+                //2017-08-23 06:08:52
 
                 //загнать данные из mapForCLoseDate в returnZNOs
                 //эта фигня для определения даты закрытия, время закрытия будет между последним вхождением запроса в лог
@@ -210,12 +223,13 @@ public class MainActivity extends AppCompatActivity {
                 //запись разобраных запросов в формате json в файл db.json
                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
                         openFileOutput(DB, MODE_WORLD_READABLE)));
-                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                Gson gson = new GsonBuilder().setPrettyPrinting()
+                        .setDateFormat("yyyy-MM-dd HH:mm:ss"). create();
                 //bw.write(gson.toJson(returnZNOs));
                 bw.write(gson.toJson(znoList));
                 bw.close();
 
-            } catch (IOException e) {
+            } catch (IOException | ParseException e) {
                 e.printStackTrace();
             }
 
@@ -245,6 +259,11 @@ public class MainActivity extends AppCompatActivity {
 
             ZNO lastZNO = znoList.get(znoList.size()-1);
             tv.append(lastZNO.toString());
+
+            Map<String, Date> znosCurrentMonth  = new TreeMap<>();
+            Calendar now = Calendar.getInstance();
+
+
 
         }
     }

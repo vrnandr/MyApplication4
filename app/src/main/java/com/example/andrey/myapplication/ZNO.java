@@ -1,8 +1,11 @@
 package com.example.andrey.myapplication;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 class ZNO {
-    String dateClose;
-    String datestamp;
+    Date dateClose;
+    Date dateStamp;
     String SDCIINFO;
     String SDESPPID;
     String SDCLASSIF;
@@ -52,7 +55,9 @@ class ZNO {
     }
 
     @Override
+
     public String toString(){
-        return datestamp+":"+SDTASKID;
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return format.format(dateStamp)+" : "+SDTASKID;
     }
 }
