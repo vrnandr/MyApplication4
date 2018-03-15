@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -56,8 +58,10 @@ public class MainActivity extends AppCompatActivity {
     final String DIR_SD = "OSKMobile";
     final String DB = "db.json";
     final String FILENAME_SD = "ServiceLog.log";
+    final String LAST_DATE = "lastDate";
     //final String FILENAME_SD = "log10log";
     TextView tv;
+    ArrayList<ZNO> znos;
     //HashSet<Integer> tasksID;
     //HashSet<ZNO> znos;
 
@@ -77,13 +81,20 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
-                           parseLog();
+                           parseLog(null);
                         }
                     })
-                    .setNegativeButton("Нет", null);
+                    .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            on();
+                        }
+                    });
             AlertDialog dialog = builder.create();
             dialog.show();
         }
+        on();
+
 
     }
 
@@ -92,18 +103,59 @@ public class MainActivity extends AppCompatActivity {
         return (file.exists()&&!file.isDirectory());
     }
 
-    void parseLog(){
-        new MyTask(this).execute();
+    void parseLog(String date){
+        new MyTask(this).execute(date);
+
+    }
+
+
+    void on(){
+        //Считываение сохраненного файла
+        try {
+            BufferedReader readerDBJson = new BufferedReader(new FileReader(new File(getApplicationContext().getFilesDir(), DB)));
+            Gson gson = new Gson();
+            ZNO[] z = gson.fromJson(readerDBJson, ZNO[].class);
+            znos = new ArrayList<>();
+            znos.addAll(Arrays.asList(z));
+            readerDBJson.close();
+        } catch (JsonParseException|IOException e) {
+            e.printStackTrace();
+        }
+        //вывод статистики за текущий месяц
+        SimpleDateFormat formatCurrentMonth = new SimpleDateFormat("yyyy-MM");
+        String currentMonth = formatCurrentMonth.format(new Date());
+        //String  currentMonth= "2017-12";
+
+        Map<String,ZNO> mapZnosCurrentMonth = new TreeMap<>();
+        for(ZNO z: znos)
+            if (z.dateClose.contains(currentMonth))
+                mapZnosCurrentMonth.put(z.SDTASKID,z);
+
+        tv.append("\n");
+        tv.append("Запросов за текущий месяц: "+Integer.toString(mapZnosCurrentMonth.size())+"\n");
+        tv.append("Номер запроса Дата, время закрытия"+"\n");
+        for(ZNO z:mapZnosCurrentMonth.values()){
+            tv.append(z.SDTASKID +" "+z.dateClose+"\n");
+        }
 
     }
 
     public void onclick (View view){
         Log.d(TAG,"Кнопка нажата");
-        parseLog();
+        parseLog(null);
 
     }
 
-    public class MyTask extends AsyncTask<Void,Integer,ArrayList<ZNO>>{
+    //onclick Обновить
+    public void updateLogs(View view){
+
+        SharedPreferences sPref = getPreferences(MODE_PRIVATE);
+        String lastdDate = sPref.getString(LAST_DATE, "");
+        parseLog(lastdDate);
+
+    }
+
+    public class MyTask extends AsyncTask<String,Integer,ArrayList<ZNO>>{
 
         int k; //коофициент для частоты обновлния прогрессдиалога
 
@@ -135,9 +187,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected ArrayList<ZNO> doInBackground(Void... params) {
+        protected ArrayList<ZNO> doInBackground(String... params) {
             LinkedHashSet<ZNO> returnZNOs = new LinkedHashSet<>();
             Map<String, String> mapForCloseDate = new TreeMap<>();
+            String lastDate= null;
 
             //если есть db.json сначала считать его
             if (isDBPresent()){
@@ -156,9 +209,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
 
-            //
-
-
             if (!Environment.getExternalStorageState().equals(
                     Environment.MEDIA_MOUNTED)) {
                 Log.d(TAG, "jsonTest: " + "SD-карта не доступна: " + Environment.getExternalStorageState());
@@ -175,7 +225,13 @@ public class MainActivity extends AppCompatActivity {
                 String jsonString;
                 String dateStamp;
                 int countBytes=0;
-                while ((jsonString = br.readLine()) != null) {
+                ZNO[] lastznos= null;
+                while (((jsonString = br.readLine()) != null)
+                       //&((params[0]!=null)&(jsonString.contains(params[0])))
+                        )
+                {
+                    if (params[0]!=null&!jsonString.contains(params[0]))
+                        continue;
                     countBytes+=jsonString.getBytes().length;
                     if (countBytes>k) {
                         publishProgress(countBytes);
@@ -183,7 +239,8 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (jsonString.contains("Получен массив задач: [{")) {
-                        dateStamp = jsonString.substring(0,20); //хардкод
+                        dateStamp = jsonString.substring(0,19); //хардкод
+                        lastDate=dateStamp;
                         jsonString = jsonString.substring(jsonString.indexOf('['), jsonString.length());
                     }
                     else
@@ -195,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
                             z.datestamp = dateStamp;
                             mapForCloseDate.put(z.SDTASKID,dateStamp);
                         }
+                        lastznos= znos;
                         returnZNOs.addAll(Arrays.asList(znos));
                     } catch (JsonParseException e){
                         Log.d(TAG, "jsonTest: Ошибка JsonParseException "+jsonString);
@@ -203,11 +261,21 @@ public class MainActivity extends AppCompatActivity {
                 }
                 br.close();
 
+                //для запросов находяшихся в последней json строке лога установить время закрытия пустым, так как они с бОльшей вероятностью не закрыты
+                try {
+                    for(ZNO z:lastznos)
+                        mapForCloseDate.put(z.SDTASKID, "");
+                } catch (NullPointerException e){
+                    Log.d(TAG, "doInBackground: Ошибка при обновлении времени закрытия не закрытых запросов");
+                    e.printStackTrace();
+                }
                 //загнать данные из mapForCLoseDate в returnZNOs
                 //эта фигня для определения даты закрытия, время закрытия будет между последним вхождением запроса в лог
                 // и последним НЕ вхождением, имхо проще сделать последние вхождение
                 for (ZNO z:returnZNOs)
                     z.dateClose=mapForCloseDate.get(z.SDTASKID);
+
+
 
                 ArrayList<ZNO> znoList = new ArrayList<>(returnZNOs);
 
@@ -218,6 +286,12 @@ public class MainActivity extends AppCompatActivity {
                 //bw.write(gson.toJson(returnZNOs));
                 bw.write(gson.toJson(znoList));
                 bw.close();
+
+                //запись в преференсес дату последней строки с json
+                SharedPreferences sPref = getPreferences(MODE_PRIVATE);
+                Editor ed = sPref.edit();
+                ed.putString(LAST_DATE, lastDate);
+                ed.apply();
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -239,19 +313,22 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(znoList);
             Log.d(TAG, "onPostExecute: конец потока");
             if (pg.isShowing()) pg.dismiss();
+            on();
+            /*
+            //znos=znoList;
 
             /*TreeSet<Integer> taskIDs = new TreeSet<>();
             for(ZNO z:result){
                 taskIDs.add(Integer.parseInt(z.SDTASKID));
             }
             tv.append("Всего запросов: "+taskIDs.size()+"\n");
-            tv.append("Последний запрос: "+taskIDs.last()+"\n");*/
+            tv.append("Последний запрос: "+taskIDs.last()+"\n");
 
             ZNO lastZNO = znoList.get(znoList.size()-1);
             tv.append(lastZNO.toString());
 
             /*SimpleDateFormat formatCurrentMonth = new SimpleDateFormat("yyyy-MM");
-            String currentMonth = formatCurrentMonth.format(new Date());*/
+            String currentMonth = formatCurrentMonth.format(new Date());
             String  currentMonth= "2017-12";
 
             Map<String,ZNO> mapZnosCurrentMonth = new TreeMap<>();
@@ -265,6 +342,7 @@ public class MainActivity extends AppCompatActivity {
             for(ZNO z:mapZnosCurrentMonth.values()){
                 tv.append(z.SDTASKID +" "+z.dateClose+"\n");
             }
+            */
 
         }
     }
